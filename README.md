@@ -45,4 +45,4 @@ github repo.
 
 __Copyright Grupo FalaBrasil (2018)__    
 __Federal University of Pará__    
-__Author: Cassio Batista - cassio.batista.13@gmail.com__
+Cassio Batista - cassio.batista.13@gmail.com
