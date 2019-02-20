@@ -44,5 +44,5 @@ perform this step, since the dict files you'd rather need are already on our
 github repo.
 
 __Copyright Grupo FalaBrasil (2018)__    
-__Federal University of Pará__    
+__Universidade Federal do Pará__    
 Cassio Batista - cassio.batista.13@gmail.com
