@@ -1,5 +1,9 @@
-# CMU Sphinx - tutorial para treino de modelo acústico
+# CMU Sphinx - tutorial for training acoustic models
 
+[Paper](https://www.isca-speech.org/archive/IberSPEECH_2018/abstracts/IberS18_P1-13_Batista.html): **Baseline Acoustic Models for Brazilian Portuguese Using Kaldi Tools**    
+A comparison between Kaldi and CMU Sphinx for Brazilian Portuguese was
+performed. Resources for both toolkits were developed and made publicly 
+available to the community.
 According to CMUSphinx's [tutorial AM](https://cmusphinx.github.io/wiki/tutorialam/),
 the directory tree for new projects must follow the structure below:
 
@@ -42,6 +46,27 @@ and have its location available on the PATH env variable.
 __NOTE__: Unless you want to build your own dictionary, you DO NOT need to
 perform this step, since the dict files you'd rather need are already on our
 github repo.
+
+## Citation
+
+If you use these codes or want to mention the paper referred above, please 
+cite us as one of the following: 
+
+> Batista, C., Dias, A.L., Sampaio Neto, N. (2018) Baseline Acoustic Models for
+> Brazilian Portuguese Using Kaldi Tools. Proc. IberSPEECH 2018, 77-81, DOI:
+> 10.21437/IberSPEECH.2018-17.
+
+```bibtex
+@inproceedings{Batista2018,
+    author    = {Cassio Batista and Ana Larissa Dias and Nelson {Sampaio Neto}},
+    title     = {{Baseline Acoustic Models for Brazilian Portuguese Using Kaldi Tools}},
+    year      = {2018},
+    booktitle = {Proc. IberSPEECH 2018},
+    pages     = {77--81},
+    doi       = {10.21437/IberSPEECH.2018-17},
+    url       = {http://dx.doi.org/10.21437/IberSPEECH.2018-17}
+}
+```    
 
 __Copyright Grupo FalaBrasil (2018)__    
 __Universidade Federal do Pará__    
