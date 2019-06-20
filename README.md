@@ -68,6 +68,25 @@ cite us as one of the following:
 }
 ```    
 
-__Copyright Grupo FalaBrasil (2018)__    
-__Universidade Federal do Pará__    
+Authors:   
 Cassio Batista - cassio.batista.13@gmail.com
+
+<!--begin=html--> 
+<table>
+<tbody>
+<td>
+
+[![FalaBrasil](docs/logo_fb_github_footer.png)](https://ufpafalabrasil.gitlab.io/ "Visite o site do Grupo FalaBrasil") [![UFPA](docs/logo_ufpa_github_footer.png)](https://portal.ufpa.br/ "Visite o site da UFPA")
+
+</td>
+<td>
+
+__Grupo FalaBrasil (2019)__ - https://ufpafalabrasil.gitlab.io/      
+__Universidade Federal do Pará (UFPA)__ - https://portal.ufpa.br/     
+Belém, Pará, Brasil
+
+</td>
+</tbody>
+</table>
+<!--end=html--> 
+
