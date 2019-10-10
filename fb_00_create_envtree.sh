@@ -2,11 +2,11 @@
 #
 # Create environment tree for training acoustic models with CMU Sphinx
 #
-# Copyleft Grupo FalaBrasil (2018)
+# Grupo FalaBrasil (2018)
+# Federal University of Pará (UFPA)
 #
 # Author: Mar 2018
 # Cassio Batista - cassio.batista.13@gmail.com
-# Federal University of Pará (UFPA)
 #
 # Reference: 
 # https://cmusphinx.github.io/wiki/tutorialam/

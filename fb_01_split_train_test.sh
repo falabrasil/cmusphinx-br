@@ -3,11 +3,11 @@
 # A script that creates the fileids and transcriptions files inside the etc/
 # folder and also create symlinks of the audio dataset within the wav folder
 #
-# Copyleft Grupo FalaBrasil (2018)
+# Grupo FalaBrasil (2018)
+# Federal University of Pará (UFPA)
 #
 # Author: March 2018
 # Cassio Batista - cassio.batista.13@gmail.com
-# Federal University of Pará (UFPA)
 #
 # Reference:
 # https://cmusphinx.github.io/wiki/tutorialam/

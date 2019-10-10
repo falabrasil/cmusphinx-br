@@ -4,11 +4,11 @@
 # and .phone), except the language model, which must be created with SRILM in
 # the ARPA format
 #
-# Copyleft Grupo FalaBrasil (2018)
+# Grupo FalaBrasil (2018)
+# Federal University of Pará (UFPA)
 #
 # Author: March 2018
 # Cassio Batista - cassio.batista.13@gmail.com
-# Federal University of Pará (UFPA)
 #
 # Reference:
 # https://cmusphinx.github.io/wiki/tutorialam/
