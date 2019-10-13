@@ -13,9 +13,9 @@
 # https://cmusphinx.github.io/wiki/tutorialam/
 
 SPLIT_RANDOM=false
-NJ=4
+NJ=6
 TEST_DIR="lapsbm16k"
-SKIP_DIRS="tedx-*|male-female*"
+SKIP_DIRS="tedx|male-female|base_Anderson|lapsmail"
 
 function print_fb_ascii() {
     echo -e "\033[94m  ____                         \033[93m _____     _           \033[0m"
@@ -44,72 +44,68 @@ elif [ ! -d $1 ] || [ ! -d $2 ] ; then
     exit 1
 fi
 
-function split_dataset_bg() {
-    # create a dir for the speaker and link both files to it
-    mkdir -p ${1}/wav/${2}
-    ln -s $3 ${1}/wav/${2}
-    ln -s $4 ${1}/wav/${2} 
+function wait_for_process() {
+    for pid in ${1[@]} ; do
+
+    done
 }
 
-# 0.) split train test
+# 0.) split train test (oct 10, 2019)
+# args: <file_list> <sphinx_project_dir>
 function split_dataset() {
-    if [ ! -d ${1}/wav ] || [ ! -d ${1}/etc ] ; then
-        echo "warning: you may not had run the fb_00 script!"
-    fi
-    dbname=$(basename $1)
-    rm -rf ${1}/wav
+    rm -rf ${2}/wav
     while read line ; do
         # define the ID speaker (same name of the folder)
-        spkr=$(readlink -f $line | sed 's/\// /g' | awk '{print $(NF-1)}')
-        wavname=$(basename $line)
-
         # get the fullpath of audio and transcriptions files
+        spkr=$(basename $(dirname $line))
         wav=$(readlink -f ${line}.wav) 
         txt=$(readlink -f ${line}.txt) 
 
-        # execute process of creating symlinks in background
-        (split_dataset_bg $1 $spkr $wav $txt)&
-
-    done < ${2}.list.0
+        # define symlinks
+        mkdir -p ${2}/wav/${spkr}
+        ln -s $wav ${2}/wav/${spkr}
+        ln -s $txt ${2}/wav/${spkr} 
+    done < $1
     sleep 1
-    echo -e "\ndone splitting $2"
+    echo -e "done splitting $1 ($(date))"
 }
 
-# 1.) create fileids
+# 1.) create fileids (oct 12, 2019)
+# args: <file_list> <sphinx_project_dir> <train_or_test>
 function create_fileids() {
-    dbname=$(basename $1)
-    rm -f ${1}/etc/${dbname}_${2}.fileids
+    dbname=$(basename $2)
+    rm -f ${2}/etc/${dbname}_${3}.fileids
     while read line ; do
         # define the ID speaker (same name of the folder)
-        spkr=$(readlink -f $line | sed 's/\// /g' | awk '{print $(NF-1)}')
-        wavname=$(basename $line)
+        # get the filename of wav audio file
+        spkr=$(basename $(dirname $line))
+        wav=$(basename $line)
 
         # create etc/fileids
-        echo "${spkr}/${wavname}" >> ${1}/etc/${dbname}_${2}.fileids
-    done < ${2}.list.1
+        echo "${spkr}/${wav}" >> ${2}/etc/${dbname}_${3}.fileids
+    done < $1
     sleep 1
-    echo -e "\ndone fileids"
+    echo -e "done creating .fileids from $1 ($(date))"
 }
 
-# 2.) create transcription files
-function create_trans() {
-    dbname=$(basename $1)
-    rm -f ${1}/etc/${dbname}_${2}.transcription
+# 2.) create transcription files (oct 12, 2019)
+# args: <file_list> <sphinx_project_dir> <train_or_test>
+function create_transcription() {
+    dbname=$(basename $2)
+    rm -f ${2}/etc/${dbname}_${3}.transcription
     while read line ; do
         # define the ID speaker (same name of the folder)
-        spkr=$(readlink -f $line | sed 's/\// /g' | awk '{print $(NF-1)}')
-        wavname=$(basename $line)
-
-        # get the fullpath transcriptions files
+        # get the filename of wav audio file
+        # get the fullpath of transcriptions files
+        spkr=$(basename $(dirname $line))
+        wav=$(basename $line)
         txt=$(readlink -f ${line}.txt) 
 
         # create etc/transcription
-        echo "<s> $(cat $txt | sed 's/ü/u/g') </s> ($wavname)" >> ${1}/etc/${dbname}_${2}.transcription
-
-    done < ${2}.list.2
-    echo
+        echo "<s> $(cat $txt) </s> ($wav)" >> ${2}/etc/${dbname}_${3}.transcription
+    done < $1
     sleep 1
-    echo -e "\ndone transcriptions"
+    echo -e "done creating ,transcription from $1 ($(date))"
 }
 
 ### main ###
@@ -130,37 +126,80 @@ if $SPLIT_RANDOM ; then
 else
     echo "warning: using only '$TEST_DIR' for test"
     find "${1}" -name '*.wav' |\
-            grep -v "${TEST_DIR}" | sed 's/.wav//g' > train.list
+            grep -vE "${TEST_DIR}|${SKIP_DIRS}" | sed 's/.wav//g' > train.list
     find "${1}/${TEST_DIR}" -name '*.wav' | sed 's/.wav//g' > test.list
 
     ntrain=$(wc -l train.list | awk '{print $1}')
     ntest=$(wc -l test.list | awk '{print $1}')
 fi
 
-split -den $NJ --additional-suffix '.temp' train.list TRAIN
-#split -den $NJ --additional-suffix '.temp' test.list  TEST
-
-for f in $(ls TRAIN*.temp) ; do
-    echo $f
-done
-exit 1
+echo -en "\033[1m"
+echo "creating $NJ temp files for parallel processing jobs..."
+echo -en "\033[0m"
+split -den l/${NJ} --additional-suffix '.temp' train.list TRAIN
+split -den l/${NJ} --additional-suffix '.temp' test.list  TEST
 rm *.list
 
-echo -e "\033[1msplitting dataset (bg)...\033[0m"
-(split_dataset "$2" "test")&
-(split_dataset "$2" "train")&
-sleep 1
+#echo -en "\033[1m"
+#echo "creating symlinks for test dataset..."
+#echo -en "\033[0m"
+#PIDS=()
+#for f in $(ls TEST*.temp) ; do
+#    (split_dataset $f $2)& 
+#    PIDS+=($!)
+#done
+#
+## TODO check PIDs and wait for bg processes to finish
+#
+#echo -en "\033[1m"
+#echo "creating symlinks for train dataset..."
+#echo -en "\033[0m"
+#PIDS=()
+#for f in $(ls TRAIN*.temp) ; do
+#    (split_dataset $f $2)& 
+#    PIDS+=($!)
+#done
+#
+## TODO check PIDs and wait for bg processes to finish
+#
+#echo -en "\033[1m"
+#echo "creating .fileids file for test dataset..."
+#echo -en "\033[0m"
+#PIDS=()
+#for f in $(ls TEST*.temp) ; do
+#    (create_fileids $f $2 "test")& 
+#    PIDS+=($!)
+#done
+#
+## TODO check PIDs and wait for bg processes to finish
+#
+#echo -en "\033[1m"
+#echo "creating .fileids file for train dataset..."
+#echo -en "\033[0m"
+#PIDS=()
+#for f in $(ls TRAIN*.temp) ; do
+#    (create_fileids $f $2 "train")& 
+#    PIDS+=($!)
+#done
+#
+## TODO check PIDs and wait for bg processes to finish
 
-echo -e "\033[1mcreating fileids (bg)...\033[0m"
-(create_fileids "$2" "test")&
-(create_fileids "$2" "train")&
-sleep 1
+echo -en "\033[1m"
+echo "creating .transcription file for test dataset..."
+echo -en "\033[0m"
+PIDS=()
+for f in $(ls TEST*.temp) ; do
+    (create_transcription $f $2 "test")& 
+    PIDS+=($!)
+done
 
-echo -ne "\033[1mcreating transcription files (fg)...\033[0m"
-(create_trans "$2" "test")&
-create_trans  "$2" "train"
+# TODO check PIDs and wait for bg processes to finish
 
-echo -e "\e[1mDone!\e[0m"
+exit 1 # breakpoint
+
+echo -en "\033[1m"
+echo "done!"
+echo -en "\033[0m"
 rm TRAIN.*.temp TEST.*.temp
 
 notify-send -i $(readlink -f doc/logo_fb_github_footer.png) \
