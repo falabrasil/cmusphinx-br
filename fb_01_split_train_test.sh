@@ -15,7 +15,7 @@
 SPLIT_RANDOM=false
 NJ=6
 TEST_DIR="lapsbm16k"
-SKIP_DIRS="tedx|male-female|Anderson|lapsmail|alcaim"
+SKIP_DIRS="tedx|male-female|Anderson|lapsmail|alcaim" # TIP: add "alcaim" to speedup debugging
 STAGE=0
 
 function print_fb_ascii() {
@@ -36,9 +36,9 @@ function print_fb_ascii() {
 if test $# -ne 2 ; then
     print_fb_ascii
     echo "Usage: $0 <audio_dataset_dir> <sphinx_project_dir>"
-    echo -e "  <audio_dataset_dir>  is the folder that contains all your audio base (wav + transcript.)."
-    echo -e "  <sphinx_project_dir> is the folder where you previously hosted your project."
-    echo -e "                       e.g.: ${HOME}/sphinx/MEUPROJETO"
+    echo "  <audio_dataset_dir>  is the folder that contains all your audio base (wav + transcript.)."
+    echo "  <sphinx_project_dir> is the folder where you previously hosted your project."
+    echo "                       e.g.: ${HOME}/sphinx/MEUPROJETO"
     exit 1
 elif [ ! -d $1 ] || [ ! -d $2 ] ; then
     echo "Error: both '$1' and '$2' must be dirs"
@@ -46,7 +46,7 @@ elif [ ! -d $1 ] || [ ! -d $2 ] ; then
 fi
 
 # https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
-# wait to background processes to finish
+# wait to background processes to finish (oct 17, 2019)
 function wait_for_processes() {
     PIDS=("$@")
     echo -n "  done: "
