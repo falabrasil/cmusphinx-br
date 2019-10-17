@@ -28,11 +28,14 @@ function print_fb_ascii() {
     echo
 }
 
-if test $# -ne 1 ; then
+if test $# -ne 2 ; then
     print_fb_ascii
-    echo "Usage: $0 <sphinx_project_dir>"
-    echo -e "  <sphinx_project_dir> is the folder where you previously hosted your project."
-    echo -e "                       e.g.: ${HOME}/sphinx/MEUPROJETO"
+    echo "Usage: $0 <fb_nlp_path> <sphinx_project_dir>"
+    echo "  <fb_nlp_path> is the folder where you cloned the repo 'nlp-generator.git'"
+    echo "                e.g.: ${HOME}/fb-gitlab/fb-nlp/nlp-generator"
+    echo "                ref.: https://gitlab.com/fb-nlp/nlp-generator.git"
+    echo "  <sphinx_project_dir> is the folder where you previously hosted your project."
+    echo "                       e.g.: ${HOME}/sphinx/MEUPROJETO"
     exit 1
 elif [ ! -d $1 ] ; then
     echo "Error: '$1' must be a dir"
@@ -51,7 +54,7 @@ function create_wordlist() {
             echo $word >> wlist.tmp
         done 
     done
-    cat wlist.tmp | sort | uniq > wordlist.tmp
+    sort wlist.tmp | uniq > wordlist.tmp
 }
 
 # 1) your_db.dic
@@ -59,11 +62,9 @@ function create_wordlist() {
 # five f ay v
 # four f ao r
 function create_dic() {
-    dbname=$(basename $1)
+    dbname=$(basename $2)
     echo -n "creating '${dbname}.dic' file... "
-
-    [[ -z "$(which lapsg2p)" ]] && echo "error: g2p must be installed" && exit 1
-    lapsg2p -w wordlist.tmp -d dict.tmp >/dev/null 2>&1
+    java -jar "${1}/fb_nlplib.jar" -i wordlist.tmp -o ${2}/etc/${dbname}.dic -ga
 }
 
 # 2) your_db.phone
@@ -79,7 +80,7 @@ function create_phone() {
     for phone in $(cat plist.tmp) ; do
         echo $phone >> phonelist.tmp
     done
-    cat phonelist.tmp | sort | uniq > ${1}/etc/${dbname}.phone
+    sort phonelist.tmp | uniq > ${1}/etc/${dbname}.phone
     echo
 }
 
@@ -90,17 +91,17 @@ function create_phone() {
 function create_filler() {
     dbname=$(basename $1)
     echo -n "creating '${dbname}.filler' file... "
-    echo "<s> SIL"    > ${1}/etc/${dbname}.filler
-    echo "</s> SIL"  >> ${1}/etc/${dbname}.filler
+    echo "<s>   SIL"  > ${1}/etc/${dbname}.filler
+    echo "</s>  SIL" >> ${1}/etc/${dbname}.filler
     echo "<sil> SIL" >> ${1}/etc/${dbname}.filler
     echo
 }
 
 ### MAIN ###
-create_wordlist $1
-create_dic $1
-create_phone $1
-create_filler $1
+create_wordlist $2
+create_dic   $1 $2
+create_phone    $2
+create_filler   $2
 
 echo -e "\e[1mDone!\e[0m"
 rm *.tmp
