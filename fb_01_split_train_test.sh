@@ -15,7 +15,7 @@
 SPLIT_RANDOM=false
 NJ=6
 TEST_DIR="lapsbm16k"
-SKIP_DIRS="tedx|male-female|base_Anderson|lapsmail"
+SKIP_DIRS="tedx|male-female|Anderson|lapsmail|alcaim"
 STAGE=0
 
 function print_fb_ascii() {
@@ -45,10 +45,20 @@ elif [ ! -d $1 ] || [ ! -d $2 ] ; then
     exit 1
 fi
 
-function wait_for_process() {
-    for pid in ${1[@]} ; do
-        echo $pid
+# https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
+# wait to background processes to finish
+function wait_for_processes() {
+    PIDS=("$@")
+    echo -n "  done: "
+    sleep 3
+    for pid in ${PIDS[@]} ; do
+        while [[ ! -z "$(ps --no-headers -p $pid)" ]] ; do
+            sleep 10
+            continue
+        done
+        echo -n "$pid "
     done
+    echo
 }
 
 # 0.) split train test (oct 10, 2019)
@@ -67,8 +77,6 @@ function split_dataset() {
         ln -s $wav ${2}/wav/${spkr}
         ln -s $txt ${2}/wav/${spkr} 
     done < $1
-    sleep 1
-    echo -e "done splitting $1 ($(date))"
 }
 
 # 1.) create fileids (oct 12, 2019)
@@ -84,10 +92,10 @@ function create_fileids() {
         # get the filename of wav audio file
         spkr=$(basename $(dirname $line))
         wav=$(basename $line)
+
+        # FIXME all bg processes are writing to the same file!
         echo "${spkr}/${wav}" >> $fout
     done < $1
-    sleep 1
-    echo -e "done creating .fileids from $1 ($(date))"
 }
 
 # 2.) create transcription files (oct 12, 2019)
@@ -103,10 +111,10 @@ function create_transcription() {
         # get the fullpath of transcriptions files
         wav=$(basename $line)
         txt=$(readlink -f ${line}.txt) # FIXME readlink really necessary?
+
+        # FIXME all bg processes are writing to the same file!
         echo "<s> $(cat $txt) </s> ($wav)" >> $fout
     done < $1
-    sleep 1
-    echo -e "done creating ,transcription from $1 ($(date))"
 }
 
 ### main ###
@@ -152,12 +160,14 @@ if [ $STAGE -eq 2 ] ; then
     echo "creating symlinks for test dataset..."
     echo -en "\033[0m"
     PIDS=()
+    echo -n "  pids: "
     for f in $(ls TEST*.temp) ; do
         (split_dataset $f $2)& 
         PIDS+=($!)
+        echo -n "$! "
     done
-    
-    # TODO check PIDs and wait for bg processes to finish
+    echo
+    wait_for_processes "${PIDS[@]}"
     STAGE=$((STAGE+1))
 fi
 
@@ -166,12 +176,14 @@ if [ $STAGE -eq 3 ] ; then
     echo "creating symlinks for train dataset..."
     echo -en "\033[0m"
     PIDS=()
+    echo -n "  pids: "
     for f in $(ls TRAIN*.temp) ; do
         (split_dataset $f $2)& 
         PIDS+=($!)
+        echo -n "$! "
     done
-    
-    # TODO check PIDs and wait for bg processes to finish
+    echo
+    wait_for_processes "${PIDS[@]}"
     STAGE=$((STAGE+1))
 fi
 
@@ -180,12 +192,14 @@ if [ $STAGE -eq 4 ] ; then
     echo "creating .fileids file for test dataset..."
     echo -en "\033[0m"
     PIDS=()
+    echo -n "  pids: "
     for f in $(ls TEST*.temp) ; do
         (create_fileids $f $2 "test")& 
         PIDS+=($!)
+        echo -n "$! "
     done
-    
-    # TODO check PIDs and wait for bg processes to finish
+    echo
+    wait_for_processes "${PIDS[@]}"
     STAGE=$((STAGE+1))
 fi
 
@@ -194,12 +208,14 @@ if [ $STAGE -eq 5 ] ; then
     echo "creating .fileids file for train dataset..."
     echo -en "\033[0m"
     PIDS=()
+    echo -n "  pids: "
     for f in $(ls TRAIN*.temp) ; do
         (create_fileids $f $2 "train")& 
         PIDS+=($!)
+        echo -n "$! "
     done
-    
-    # TODO check PIDs and wait for bg processes to finish
+    echo
+    wait_for_processes "${PIDS[@]}"
     STAGE=$((STAGE+1))
 fi
 
@@ -208,12 +224,30 @@ if [ $STAGE -eq 6 ] ; then
     echo "creating .transcription file for test dataset..."
     echo -en "\033[0m"
     PIDS=()
+    echo -n "  pids: "
     for f in $(ls TEST*.temp) ; do
         (create_transcription $f $2 "test")& 
         PIDS+=($!)
+        echo -n "$! "
     done
-    
-    # TODO check PIDs and wait for bg processes to finish
+    echo
+    wait_for_processes "${PIDS[@]}"
+    STAGE=$((STAGE+1))
+fi
+
+if [ $STAGE -eq 7 ] ; then
+    echo -en "\033[1m"
+    echo "creating .transcription file for train dataset..."
+    echo -en "\033[0m"
+    PIDS=()
+    echo -n "  pids: "
+    for f in $(ls TRAIN*.temp) ; do
+        (create_transcription $f $2 "train")& 
+        PIDS+=($!)
+        echo -n "$! "
+    done
+    echo
+    wait_for_processes "${PIDS[@]}"
     STAGE=$((STAGE+1))
 fi
 
