@@ -50,7 +50,7 @@ mkdir -p $DATA_DIR
 cd $DATA_DIR
 
 mkdir etc
-touch etc/${basefilename}{.dic,.phone,.lm.DMP,.filler}
+touch etc/${basefilename}{.dic,.phone,.lm,.filler}
 touch etc/${basefilename}{_train.fileids,_train.transcription}
 touch etc/${basefilename}{_test.fileids,_test.transcription}
 
