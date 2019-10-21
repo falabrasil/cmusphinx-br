@@ -13,6 +13,8 @@
 # Reference:
 # https://cmusphinx.github.io/wiki/tutorialam/
 
+LM_LOCAL_PATH=${HOME}/fb-gitlab/fb-asr/fb-asr-resources/kaldi-resources/lm/lm.arpa
+
 function print_fb_ascii() {
     echo -e "\033[94m  ____                         \033[93m _____     _           \033[0m"
     echo -e "\033[94m / ___| _ __ _   _ _ __   ___  \033[93m|  ___|_ _| | __ _     \033[0m"
@@ -48,7 +50,7 @@ fi
 # four
 # nine
 function create_wordlist() {
-    echo "creating wordlist..."
+    echo "creating wordlist (this stage is sequential, so be patient)..."
     for txt in $(find ${1}/wav/ -name *.txt) ; do
         for word in $(cat $txt) ; do
             echo $word >> wlist.tmp
@@ -103,6 +105,10 @@ create_wordlist $2
 create_dic   $1 $2
 create_phone    $2
 create_filler   $2
+
+if [ -f $LM_LOCAL_PATH ] ; then
+    cp -v $LM_LOCAL_PATH ${2}/etc/$(basename $2).lm
+fi
 
 echo -e "\e[1mDone!\e[0m"
 rm *.tmp
