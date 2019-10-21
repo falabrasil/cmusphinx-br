@@ -64,7 +64,6 @@ function wait_for_processes() {
 # 0.) split train test (oct 10, 2019)
 # args: <file_list> <sphinx_project_dir>
 function split_dataset() {
-    rm -rf ${2}/wav
     while read line ; do
         # define the ID speaker (same name of the folder)
         # get the fullpath of audio and transcriptions files
@@ -155,6 +154,7 @@ fi
 # creating symlinks for wav and txt files in order to avoid messing up with real
 # data on its original directory
 if [ $STAGE -eq 1 ] ; then
+    rm -rf ${2}/wav
     echo -en "\033[1m"
     echo "creating symlinks for test dataset..."
     echo -en "\033[0m"
@@ -289,7 +289,7 @@ echo -en "\033[1m"
 echo "done!"
 echo -en "\033[0m"
 
-rm -f *.temp *.split.*.in *.split.*.out *.tmp
+#rm -f *.temp *.split.*.in *.split.*.out *.tmp
 
 notify-send -i $(readlink -f doc/logo_fb_github_footer.png) \
     "'$0' finished" "it's time to run fb_02. check out your CMU Sphinx project dir at '$1'"
