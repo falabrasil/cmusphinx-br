@@ -85,15 +85,13 @@ function split_dataset() {
 #   speaker_1/file_1
 #   speaker_2/file_2
 function create_fileids() {
-    fout=${2}/etc/$(basename $2)_${3}.fileids
+    fout=$(echo $1 | sed 's/.in/.fileids.out/g')
     rm -f $fout
     while read line ; do
         # define the ID speaker (same name of the folder)
         # get the filename of wav audio file
         spkr=$(basename $(dirname $line))
         wav=$(basename $line)
-
-        # FIXME all bg processes are writing to the same file!
         echo "${spkr}/${wav}" >> $fout
     done < $1
 }
@@ -104,81 +102,81 @@ function create_fileids() {
 #   <s> hello world </s> (file_1)
 #   <s> foo bar </s> (file_2)
 function create_transcription() {
-    fout=${2}/etc/$(basename $2)_${3}.transcription
+    fout=$(echo $1 | sed 's/.in/.transcription.out/g')
     rm -f $fout
     while read line ; do
         # get the filename of wav audio file
         # get the fullpath of transcriptions files
         wav=$(basename $line)
         txt=$(readlink -f ${line}.txt) # FIXME readlink really necessary?
-
-        # FIXME all bg processes are writing to the same file!
         echo "<s> $(cat $txt) </s> ($wav)" >> $fout
     done < $1
 }
 
 ### main ###
-if [ $STAGE -eq 0 ] ; then
-    if $SPLIT_RANDOM ; then
-        echo -en "\033[1m"
-        echo "shuffling dataset..."
-        echo -en "\033[0m"
-        find "$1" -name '*.wav' | sed 's/.wav//g' | sort -R > filelist.tmp
-        
-        ntotal=$(wc -l filelist.tmp | awk '{print $1}')
-        ntest=$((ntotal/10))     # 10% test
-        ntrain=$((ntotal-ntest)) # 90% train
-        
-        head -n $ntrain filelist.tmp > train.list
-        tail -n $ntest  filelist.tmp > test.list
+if $SPLIT_RANDOM ; then
+    echo -en "\033[1m"
+    echo "shuffling dataset..."
+    echo -en "\033[0m"
+    find "$1" -name '*.wav' | sed 's/.wav//g' | sort -R > filelist.tmp
     
-        rm filelist.tmp
-    else
-        echo -en "\033[1m"
-        echo "using only '$TEST_DIR' for test"
-        echo "dir strings to skip: '$SKIP_DIRS'"
-        echo -en "\033[0m"
-        find "${1}" -name '*.wav' |\
-                grep -vE "${TEST_DIR}|${SKIP_DIRS}" | sed 's/.wav//g' > train.list
-        find "${1}/${TEST_DIR}" -name '*.wav' | sed 's/.wav//g' > test.list
-    fi
-    STAGE=$((STAGE+1))
+    ntotal=$(wc -l filelist.tmp | awk '{print $1}')
+    ntest=$((ntotal/10))     # 10% test
+    ntrain=$((ntotal-ntest)) # 90% train
+    
+    head -n $ntrain filelist.tmp > train.list
+    tail -n $ntest  filelist.tmp > test.list
+
+    rm filelist.tmp
+else
+    echo -en "\033[1m"
+    echo "using only '$TEST_DIR' for test"
+    echo "dir strings to skip: '$SKIP_DIRS'"
+    echo -en "\033[0m"
+    find "${1}" -name '*.wav' |\
+            grep -vE "${TEST_DIR}|${SKIP_DIRS}" | sed 's/.wav//g' > train.list
+    find "${1}/${TEST_DIR}" -name '*.wav' | sed 's/.wav//g' > test.list
 fi
 
-if [ $STAGE -eq 1 ] ; then
+# falabrasil requirement for speed up efficiency
+# split list of files into multiple files of list of files for parallel 
+# processing with no bottleneck / queueing
+if [ $STAGE -eq 0 ] ; then
     echo -en "\033[1m"
-    echo "creating $NJ temp files for parallel processing jobs..."
+    echo "creating >$NJ< temp files for parallel processing jobs..."
     echo -en "\033[0m"
-    split -den l/${NJ} --additional-suffix '.temp' train.list TRAIN
-    split -den l/${NJ} --additional-suffix '.temp' test.list  TEST
+    split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' train.list 'TRAIN_'
+    split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' test.list  'TEST_'
     rm *.list
     STAGE=$((STAGE+1))
 fi
 
-if [ $STAGE -eq 2 ] ; then
+# falabrasil requirement for precaution:
+# creating symlinks for wav and txt files in order to avoid messing up with real
+# data on its original directory
+if [ $STAGE -eq 1 ] ; then
     echo -en "\033[1m"
     echo "creating symlinks for test dataset..."
     echo -en "\033[0m"
     PIDS=()
     echo -n "  pids: "
-    for f in $(ls TEST*.temp) ; do
-        (split_dataset $f $2)& 
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TEST_${i}.split.in"
+        (split_dataset $filename $2)& 
         PIDS+=($!)
         echo -n "$! "
     done
     echo
     wait_for_processes "${PIDS[@]}"
-    STAGE=$((STAGE+1))
-fi
 
-if [ $STAGE -eq 3 ] ; then
     echo -en "\033[1m"
     echo "creating symlinks for train dataset..."
     echo -en "\033[0m"
     PIDS=()
     echo -n "  pids: "
-    for f in $(ls TRAIN*.temp) ; do
-        (split_dataset $f $2)& 
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TRAIN_${i}.split.in"
+        (split_dataset $filename $2)& 
         PIDS+=($!)
         echo -n "$! "
     done
@@ -187,74 +185,111 @@ if [ $STAGE -eq 3 ] ; then
     STAGE=$((STAGE+1))
 fi
 
-if [ $STAGE -eq 4 ] ; then
+# cmu sphinx requirement:
+# create .fileids files
+if [ $STAGE -eq 2 ] ; then
     echo -en "\033[1m"
     echo "creating .fileids file for test dataset..."
     echo -en "\033[0m"
     PIDS=()
     echo -n "  pids: "
-    for f in $(ls TEST*.temp) ; do
-        (create_fileids $f $2 "test")& 
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TEST_${i}.split.in"
+        (create_fileids $filename $2 "test")& 
         PIDS+=($!)
         echo -n "$! "
     done
     echo
     wait_for_processes "${PIDS[@]}"
-    STAGE=$((STAGE+1))
-fi
 
-if [ $STAGE -eq 5 ] ; then
+    # merge files created in bg into .fileids output file
+    fileids=${2}/etc/$(basename $2)_test.fileids
+    rm -f $fileids
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TEST_${i}.split.fileids.out"
+        cat $filename >> $fileids
+    done
+
     echo -en "\033[1m"
     echo "creating .fileids file for train dataset..."
     echo -en "\033[0m"
     PIDS=()
     echo -n "  pids: "
-    for f in $(ls TRAIN*.temp) ; do
-        (create_fileids $f $2 "train")& 
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TRAIN_${i}.split.in"
+        (create_fileids $filename $2 "train")& 
         PIDS+=($!)
         echo -n "$! "
     done
     echo
     wait_for_processes "${PIDS[@]}"
+
+    # merge files created in bg into .fileids output file
+    fileids=${2}/etc/$(basename $2)_train.fileids
+    rm -f $fileids
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TRAIN_${i}.split.fileids.out"
+        cat $filename >> $fileids
+    done
+
     STAGE=$((STAGE+1))
 fi
 
-if [ $STAGE -eq 6 ] ; then
+# cmu sphinx requirement
+# create .transcription files
+if [ $STAGE -eq 3 ] ; then
     echo -en "\033[1m"
     echo "creating .transcription file for test dataset..."
     echo -en "\033[0m"
     PIDS=()
     echo -n "  pids: "
-    for f in $(ls TEST*.temp) ; do
-        (create_transcription $f $2 "test")& 
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TEST_${i}.split.in"
+        (create_transcription $filename $2 "test")& 
         PIDS+=($!)
         echo -n "$! "
     done
     echo
     wait_for_processes "${PIDS[@]}"
-    STAGE=$((STAGE+1))
-fi
 
-if [ $STAGE -eq 7 ] ; then
+    # merge
+    transcription=${2}/etc/$(basename $2)_test.transcription
+    rm -f $transcription
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TEST_${i}.split.transcription.out"
+        cat $filename >> $transcription
+    done
+
     echo -en "\033[1m"
     echo "creating .transcription file for train dataset..."
     echo -en "\033[0m"
     PIDS=()
     echo -n "  pids: "
-    for f in $(ls TRAIN*.temp) ; do
-        (create_transcription $f $2 "train")& 
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TRAIN_${i}.split.in"
+        (create_transcription $filename $2 "train")& 
         PIDS+=($!)
         echo -n "$! "
     done
     echo
     wait_for_processes "${PIDS[@]}"
+
+    # merge
+    transcription=${2}/etc/$(basename $2)_train.transcription
+    rm -f $transcription
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="TRAIN_${i}.split.transcription.out"
+        cat $filename >> $transcription
+    done
+
     STAGE=$((STAGE+1))
 fi
 
 echo -en "\033[1m"
 echo "done!"
 echo -en "\033[0m"
-rm TRAIN*.temp TEST*.temp
+
+rm -f *.temp *.split.*.in *.split.*.out *.tmp
 
 notify-send -i $(readlink -f doc/logo_fb_github_footer.png) \
-    "'$0' finished" "check out your CMU Sphinx project dir at '$1'"
+    "'$0' finished" "it's time to run fb_02. check out your CMU Sphinx project dir at '$1'"
