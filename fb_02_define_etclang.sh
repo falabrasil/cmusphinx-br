@@ -42,7 +42,7 @@ elif [ ! -d $1 ] ; then
     exit 1
 fi
 
-# 0) create wordlist
+# 0) create wordlist (this is rather a preproc step towards creating a phone dict)
 # eight
 # five
 # four
@@ -63,7 +63,7 @@ function create_wordlist() {
 # four f ao r
 function create_dic() {
     dbname=$(basename $2)
-    echo -n "creating '${dbname}.dic' file... "
+    echo "creating '${dbname}.dic' file... "
     java -jar "${1}/fb_nlplib.jar" -i wordlist.tmp -o ${2}/etc/${dbname}.dic -ga
 }
 
@@ -77,6 +77,7 @@ function create_phone() {
     echo -n "creating '${dbname}.phone' file... "
 
     cat ${1}/etc/${dbname}.dic | awk '{$1="" ; print}' > plist.tmp
+    echo "SIL" > phonelist.tmp
     for phone in $(cat plist.tmp) ; do
         echo $phone >> phonelist.tmp
     done
