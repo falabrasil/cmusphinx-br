@@ -107,7 +107,9 @@ create_phone    $2
 create_filler   $2
 
 if [ -f $LM_LOCAL_PATH ] ; then
-    cp -v $LM_LOCAL_PATH ${2}/etc/$(basename $2).lm
+    ln -s $LM_LOCAL_PATH ${2}/etc/$(basename $2).lm
+else
+    wget -O ${2}/etc/$(basename $2).lm https://gitlab.com/fb-asr/fb-asr-resources/kaldi-resources/raw/master/lm/lm.arpa
 fi
 
 echo -e "\e[1mDone!\e[0m"
