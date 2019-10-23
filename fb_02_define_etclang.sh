@@ -50,7 +50,9 @@ fi
 # four
 # nine
 function create_wordlist() {
+    echo -en "\033[1m"
     echo "creating wordlist (this stage is sequential, so be patient)..."
+    echo -en "\033[0m"
     for txt in $(find ${1}/wav/ -name *.txt) ; do
         for word in $(cat $txt) ; do
             echo $word >> wlist.tmp
@@ -65,7 +67,9 @@ function create_wordlist() {
 # four f ao r
 function create_dic() {
     dbname=$(basename $2)
+    echo -en "\033[1m"
     echo "creating '${dbname}.dic' file... "
+    echo -en "\033[0m"
     java -jar "${1}/fb_nlplib.jar" -i wordlist.tmp -o ${2}/etc/${dbname}.dic -ga
 }
 
@@ -76,7 +80,9 @@ function create_dic() {
 # eh
 function create_phone() {
     dbname=$(basename $1)
-    echo -n "creating '${dbname}.phone' file... "
+    echo -en "\033[1m"
+    echo "creating '${dbname}.phone' file... "
+    echo -en "\033[0m"
 
     cat ${1}/etc/${dbname}.dic | awk '{$1="" ; print}' > plist.tmp
     echo "SIL" > phonelist.tmp
@@ -84,7 +90,6 @@ function create_phone() {
         echo $phone >> phonelist.tmp
     done
     sort phonelist.tmp | uniq > ${1}/etc/${dbname}.phone
-    echo
 }
 
 # 3) your_db.filler
@@ -93,11 +98,26 @@ function create_phone() {
 # <sil> SIL
 function create_filler() {
     dbname=$(basename $1)
-    echo -n "creating '${dbname}.filler' file... "
+    echo -en "\033[1m"
+    echo "creating '${dbname}.filler' file... "
+    echo -en "\033[0m"
     echo "<s>   SIL"  > ${1}/etc/${dbname}.filler
     echo "</s>  SIL" >> ${1}/etc/${dbname}.filler
     echo "<sil> SIL" >> ${1}/etc/${dbname}.filler
-    echo
+}
+
+# 4) your_db.lm
+function create_lm() {
+    dbname=$(basename $1)
+    echo -en "\033[1m"
+    echo "creating '${dbname}.lm' file... "
+    echo -en "\033[0m"
+    if [ -f $LM_LOCAL_PATH ] ; then
+        ln -sfv $LM_LOCAL_PATH ${1}/etc/${dbname}.lm
+    else
+        wget -q --show-progress -O ${1}/etc/${dbname}.lm \
+            https://gitlab.com/fb-asr/fb-asr-resources/kaldi-resources/raw/master/lm/lm.arpa
+    fi
 }
 
 ### MAIN ###
@@ -105,14 +125,11 @@ create_wordlist $2
 create_dic   $1 $2
 create_phone    $2
 create_filler   $2
+create_lm       $2
 
-if [ -f $LM_LOCAL_PATH ] ; then
-    ln -s $LM_LOCAL_PATH ${2}/etc/$(basename $2).lm
-else
-    wget -O ${2}/etc/$(basename $2).lm https://gitlab.com/fb-asr/fb-asr-resources/kaldi-resources/raw/master/lm/lm.arpa
-fi
-
-echo -e "\e[1mDone!\e[0m"
+echo -en "\033[1m"
+echo "done!"
+echo -en "\033[0m"
 rm *.tmp
 
 notify-send -i $(readlink -f doc/logo_fb_github_footer.png) \
