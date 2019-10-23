@@ -48,6 +48,7 @@ fi
 
 # https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
 # wait to background processes to finish (oct 17, 2019)
+# args: <array_of_pids>
 function wait_for_processes() {
     PIDS=("$@")
     echo -n "  done: "
@@ -60,6 +61,16 @@ function wait_for_processes() {
         echo -n "$pid "
     done
     echo
+}
+
+# merge split intermediate files into official outfile required by sphinx (oct 23, 2019)
+# args: <subset_prefix> <sphinx_file_type> <out_file>
+function merge() {
+    rm -f $3
+    for i in $(seq -f "%03g" 0 $((NJ-1))); do
+        filename="${1}_${i}.split.${2}.out"
+        cat $filename >> $3
+    done
 }
 
 # 0.) split train test (oct 10, 2019)
@@ -126,8 +137,6 @@ if $SPLIT_RANDOM ; then
     
     head -n $ntrain filelist.tmp > ${SUBSETS_PREFIX[0]}.list
     tail -n $ntest  filelist.tmp > ${SUBSETS_PREFIX[1]}.list
-
-    rm filelist.tmp
 else
     echo -en "\033[1m"
     echo "using only '$TEST_DIR' for test"
@@ -147,7 +156,6 @@ if [ $STAGE -eq 0 ] ; then
     echo -en "\033[0m"
     split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' ${SUBSETS_PREFIX[0]}.list "${SUBSETS_PREFIX[0]}_"
     split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' ${SUBSETS_PREFIX[1]}.list "${SUBSETS_PREFIX[1]}_"
-    rm *.list
     STAGE=$((STAGE+1))
 fi
 
@@ -193,12 +201,8 @@ if [ $STAGE -eq 2 ] ; then
         wait_for_processes "${PIDS[@]}"
 
         # merge files created in bg into .fileids output file
-        fileids=${2}/etc/$(basename $2)_${prefix}.fileids
-        rm -f $fileids
-        for i in $(seq -f "%03g" 0 $((NJ-1))); do
-            filename="${prefix}_${i}.split.fileids.out"
-            cat $filename >> $fileids
-        done
+        filename=${2}/etc/$(basename $2)_${prefix}.fileids
+        merge $prefix "fileids" $filename
     done
     STAGE=$((STAGE+1))
 fi
@@ -222,21 +226,17 @@ if [ $STAGE -eq 3 ] ; then
         wait_for_processes "${PIDS[@]}"
 
         # merge files created in bg into .transcription output file
-        transcription=${2}/etc/$(basename $2)_${prefix}.transcription
-        rm -f $transcription
-        for i in $(seq -f "%03g" 0 $((NJ-1))); do
-            filename="${prefix}_${i}.split.transcription.out"
-            cat $filename >> $transcription
-        done
+        filename=${2}/etc/$(basename $2)_${prefix}.transcription
+        merge $prefix "transcription" $filename
     done
     STAGE=$((STAGE+1))
 fi
 
+rm -f *.list *.tmp *.in *.out
+
 echo -en "\033[1m"
 echo "done!"
 echo -en "\033[0m"
-
-#rm -f *.temp *.split.*.in *.split.*.out *.tmp
 
 notify-send -i $(readlink -f doc/logo_fb_github_footer.png) \
     "'$0' finished" "it's time to run fb_02. check out your CMU Sphinx project dir at '$1'"
