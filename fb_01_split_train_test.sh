@@ -12,11 +12,12 @@
 # Reference:
 # https://cmusphinx.github.io/wiki/tutorialam/
 
-SPLIT_RANDOM=false
 NJ=6
+SPLIT_RANDOM=false
 TEST_DIR="lapsbm16k"
 SKIP_DIRS="tedx|male-female|Anderson|lapsmail|alcaim" # TIP: add "alcaim" to speedup debugging
 STAGE=0
+SUBSETS_PREFIX=("train" "test") # TODO asset length==2
 
 function print_fb_ascii() {
     echo -e "\033[94m  ____                         \033[93m _____     _           \033[0m"
@@ -84,7 +85,7 @@ function split_dataset() {
 #   speaker_1/file_1
 #   speaker_2/file_2
 function create_fileids() {
-    fout=$(echo $1 | sed 's/.in/.fileids.out/g')
+    fout=$(echo $1 | sed 's/\.in/\.fileids.out/g')
     rm -f $fout
     while read line ; do
         # define the ID speaker (same name of the folder)
@@ -101,7 +102,7 @@ function create_fileids() {
 #   <s> hello world </s> (file_1)
 #   <s> foo bar </s> (file_2)
 function create_transcription() {
-    fout=$(echo $1 | sed 's/.in/.transcription.out/g')
+    fout=$(echo $1 | sed 's/\.in/\.transcription.out/g')
     rm -f $fout
     while read line ; do
         # get the filename of wav audio file
@@ -123,8 +124,8 @@ if $SPLIT_RANDOM ; then
     ntest=$((ntotal/10))     # 10% test
     ntrain=$((ntotal-ntest)) # 90% train
     
-    head -n $ntrain filelist.tmp > train.list
-    tail -n $ntest  filelist.tmp > test.list
+    head -n $ntrain filelist.tmp > ${SUBSETS_PREFIX[0]}.list
+    tail -n $ntest  filelist.tmp > ${SUBSETS_PREFIX[1]}.list
 
     rm filelist.tmp
 else
@@ -133,8 +134,8 @@ else
     echo "dir strings to skip: '$SKIP_DIRS'"
     echo -en "\033[0m"
     find "${1}" -name '*.wav' |\
-            grep -vE "${TEST_DIR}|${SKIP_DIRS}" | sed 's/.wav//g' > train.list
-    find "${1}/${TEST_DIR}" -name '*.wav' | sed 's/.wav//g' > test.list
+            grep -vE "${TEST_DIR}|${SKIP_DIRS}" | sed 's/.wav//g' > ${SUBSETS_PREFIX[0]}.list
+    find "${1}/${TEST_DIR}" -name '*.wav' | sed 's/.wav//g' > ${SUBSETS_PREFIX[1]}.list
 fi
 
 # falabrasil requirement for speed up efficiency
@@ -144,8 +145,8 @@ if [ $STAGE -eq 0 ] ; then
     echo -en "\033[1m"
     echo "creating >$NJ< temp files for parallel processing jobs..."
     echo -en "\033[0m"
-    split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' train.list 'TRAIN_'
-    split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' test.list  'TEST_'
+    split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' ${SUBSETS_PREFIX[0]}.list "${SUBSETS_PREFIX[0]}_"
+    split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' ${SUBSETS_PREFIX[1]}.list "${SUBSETS_PREFIX[1]}_"
     rm *.list
     STAGE=$((STAGE+1))
 fi
@@ -155,133 +156,79 @@ fi
 # data on its original directory
 if [ $STAGE -eq 1 ] ; then
     rm -rf ${2}/wav
-    echo -en "\033[1m"
-    echo "creating symlinks for test dataset..."
-    echo -en "\033[0m"
-    PIDS=()
-    echo -n "  pids: "
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TEST_${i}.split.in"
-        (split_dataset $filename $2)& 
-        PIDS+=($!)
-        echo -n "$! "
+    for prefix in ${SUBSETS_PREFIX[@]} ; do
+        echo -en "\033[1m"
+        echo "creating symlinks for $prefix dataset..."
+        echo -en "\033[0m"
+        PIDS=()
+        echo -n "  pids: "
+        for i in $(seq -f "%03g" 0 $((NJ-1))); do
+            filename="${prefix}_${i}.split.in"
+            (split_dataset $filename $2)& 
+            PIDS+=($!)
+            echo -n "$! "
+        done
+        echo
+        wait_for_processes "${PIDS[@]}"
     done
-    echo
-    wait_for_processes "${PIDS[@]}"
-
-    echo -en "\033[1m"
-    echo "creating symlinks for train dataset..."
-    echo -en "\033[0m"
-    PIDS=()
-    echo -n "  pids: "
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TRAIN_${i}.split.in"
-        (split_dataset $filename $2)& 
-        PIDS+=($!)
-        echo -n "$! "
-    done
-    echo
-    wait_for_processes "${PIDS[@]}"
     STAGE=$((STAGE+1))
 fi
 
 # cmu sphinx requirement:
 # create .fileids files
 if [ $STAGE -eq 2 ] ; then
-    echo -en "\033[1m"
-    echo "creating .fileids file for test dataset..."
-    echo -en "\033[0m"
-    PIDS=()
-    echo -n "  pids: "
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TEST_${i}.split.in"
-        (create_fileids $filename $2 "test")& 
-        PIDS+=($!)
-        echo -n "$! "
-    done
-    echo
-    wait_for_processes "${PIDS[@]}"
+    for prefix in ${SUBSETS_PREFIX[@]} ; do
+        echo -en "\033[1m"
+        echo "creating .fileids file for $prefix dataset..."
+        echo -en "\033[0m"
+        PIDS=()
+        echo -n "  pids: "
+        for i in $(seq -f "%03g" 0 $((NJ-1))); do
+            filename="${prefix}_${i}.split.in"
+            (create_fileids $filename $2 $prefix)& 
+            PIDS+=($!)
+            echo -n "$! "
+        done
+        echo
+        wait_for_processes "${PIDS[@]}"
 
-    # merge files created in bg into .fileids output file
-    fileids=${2}/etc/$(basename $2)_test.fileids
-    rm -f $fileids
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TEST_${i}.split.fileids.out"
-        cat $filename >> $fileids
+        # merge files created in bg into .fileids output file
+        fileids=${2}/etc/$(basename $2)_${prefix}.fileids
+        rm -f $fileids
+        for i in $(seq -f "%03g" 0 $((NJ-1))); do
+            filename="${prefix}_${i}.split.fileids.out"
+            cat $filename >> $fileids
+        done
     done
-
-    echo -en "\033[1m"
-    echo "creating .fileids file for train dataset..."
-    echo -en "\033[0m"
-    PIDS=()
-    echo -n "  pids: "
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TRAIN_${i}.split.in"
-        (create_fileids $filename $2 "train")& 
-        PIDS+=($!)
-        echo -n "$! "
-    done
-    echo
-    wait_for_processes "${PIDS[@]}"
-
-    # merge files created in bg into .fileids output file
-    fileids=${2}/etc/$(basename $2)_train.fileids
-    rm -f $fileids
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TRAIN_${i}.split.fileids.out"
-        cat $filename >> $fileids
-    done
-
     STAGE=$((STAGE+1))
 fi
 
 # cmu sphinx requirement
 # create .transcription files
 if [ $STAGE -eq 3 ] ; then
-    echo -en "\033[1m"
-    echo "creating .transcription file for test dataset..."
-    echo -en "\033[0m"
-    PIDS=()
-    echo -n "  pids: "
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TEST_${i}.split.in"
-        (create_transcription $filename $2 "test")& 
-        PIDS+=($!)
-        echo -n "$! "
-    done
-    echo
-    wait_for_processes "${PIDS[@]}"
+    for prefix in ${SUBSETS_PREFIX[@]} ; do
+        echo -en "\033[1m"
+        echo "creating .transcription file for $prefix dataset..."
+        echo -en "\033[0m"
+        PIDS=()
+        echo -n "  pids: "
+        for i in $(seq -f "%03g" 0 $((NJ-1))); do
+            filename="${prefix}_${i}.split.in"
+            (create_transcription $filename $2 $prefix)& 
+            PIDS+=($!)
+            echo -n "$! "
+        done
+        echo
+        wait_for_processes "${PIDS[@]}"
 
-    # merge
-    transcription=${2}/etc/$(basename $2)_test.transcription
-    rm -f $transcription
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TEST_${i}.split.transcription.out"
-        cat $filename >> $transcription
+        # merge files created in bg into .transcription output file
+        transcription=${2}/etc/$(basename $2)_${prefix}.transcription
+        rm -f $transcription
+        for i in $(seq -f "%03g" 0 $((NJ-1))); do
+            filename="${prefix}_${i}.split.transcription.out"
+            cat $filename >> $transcription
+        done
     done
-
-    echo -en "\033[1m"
-    echo "creating .transcription file for train dataset..."
-    echo -en "\033[0m"
-    PIDS=()
-    echo -n "  pids: "
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TRAIN_${i}.split.in"
-        (create_transcription $filename $2 "train")& 
-        PIDS+=($!)
-        echo -n "$! "
-    done
-    echo
-    wait_for_processes "${PIDS[@]}"
-
-    # merge
-    transcription=${2}/etc/$(basename $2)_train.transcription
-    rm -f $transcription
-    for i in $(seq -f "%03g" 0 $((NJ-1))); do
-        filename="TRAIN_${i}.split.transcription.out"
-        cat $filename >> $transcription
-    done
-
     STAGE=$((STAGE+1))
 fi
 
