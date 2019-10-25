@@ -11,6 +11,8 @@
 # Reference: 
 # https://cmusphinx.github.io/wiki/tutorialam/
 
+TAG="FB_00"
+
 function print_fb_ascii() {
     echo -e "\033[94m  ____                         \033[93m _____     _           \033[0m"
     echo -e "\033[94m / ___| _ __ _   _ _ __   ___  \033[93m|  ___|_ _| | __ _     \033[0m"
@@ -43,19 +45,23 @@ elif [ -d $1 ] ; then
     fi
 fi
 
-DATA_DIR="$1"
-basefilename=$(basename $DATA_DIR)
+# check for dependences
+for f in sox wget ; do
+    if ! $(type -t "$f" > /dev/null) ; then
+        echo "[$TAG] please install '$f'"
+        exit 1
+    fi
+done
 
-mkdir -p $DATA_DIR
-cd $DATA_DIR
+mkdir -p $1
+mkdir ${1}/{wav,etc}
 
-mkdir etc
-touch etc/${basefilename}{.dic,.phone,.lm,.filler}
-touch etc/${basefilename}{_train.fileids,_train.transcription}
-touch etc/${basefilename}{_test.fileids,_test.transcription}
+basefilename=$(basename $1)
+touch ${1}/etc/${basefilename}{.dic,.phone,.lm,.filler}
+touch ${1}/etc/${basefilename}{_train.fileids,_train.transcription}
+touch ${1}/etc/${basefilename}{_test.fileids,_test.transcription}
 
-mkdir wav
-
-tree $DATA_DIR
-echo "check out your project dir at '$(readlink -f $DATA_DIR)'"
-### EOF ###
+tree $1
+echo -en "\033[1m"
+echo "[$TAG] check out your project dir at '$(readlink -f $1)'"
+echo -en "\033[0m"
