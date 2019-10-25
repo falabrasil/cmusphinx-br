@@ -119,7 +119,7 @@ function create_lm() {
         ln -sfv $LM_LOCAL_PATH ${1}/etc/${dbname}.lm
     else
         # FIXME does this overwrite a previously created symlink?
-        wget -q --show-progress -O ${1}/etc/${dbname}.lm \
+        wget -q --show-progress -O "${1}/etc/${dbname}.lm" \
             https://gitlab.com/fb-asr/fb-asr-resources/kaldi-resources/raw/master/lm/lm.arpa
     fi
 }
