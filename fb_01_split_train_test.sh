@@ -17,7 +17,7 @@ TAG="FB_01"
 NJ=6
 SPLIT_RANDOM=false
 TEST_DIR="lapsbm16k"
-SKIP_DIRS="tedx|male-female|Anderson|lapsmail|alcaim" # TIP: add "alcaim" to speedup debugging
+SKIP_DIRS="tedx|male-female|Anderson|lapsmail" # TIP: add "alcaim|constituicao" to speedup debugging
 STAGE=0
 SUBSETS_PREFIX=("train" "test") # TODO asset length==2
 
