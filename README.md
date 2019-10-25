@@ -1,9 +1,5 @@
 # CMU Sphinx - tutorial for training acoustic models
 
-[Paper](https://www.isca-speech.org/archive/IberSPEECH_2018/abstracts/IberS18_P1-13_Batista.html): **Baseline Acoustic Models for Brazilian Portuguese Using Kaldi Tools**    
-A comparison between Kaldi and CMU Sphinx for Brazilian Portuguese was
-performed. Resources for both toolkits were developed and made publicly 
-available to the community.
 According to CMUSphinx's [tutorial AM](https://cmusphinx.github.io/wiki/tutorialam/),
 the directory tree for new projects must follow the structure below:
 
@@ -14,18 +10,21 @@ the directory tree for new projects must follow the structure below:
   │                             │                        
  etc/                          wav/                                     
   ├─ my_db.dic                  ├─ spkr_1/                     
-  ├─ my_db.phone                │   ├─ s1_file_1.wav                     
-  ├─ my_db.lm                   │   ├─ s1_file_2.wav         
-  ├─ my_db.filler                │   └─ s1_file_n.wav              
+  ├─ my_db.phone                │     ├─ s1_file_1.wav                     
+  ├─ my_db.lm                   │     ├─ s1_file_2.wav         
+  ├─ my_db.filler                │     └─ s1_file_n.wav              
   ├─ my_db_train.fileids         ├─ spkr_2/                
-  ├─ my_db_train.transcription  │   ├─ s2_file_1.wav             
-  ├─ my_db_test.fileids          │   ├─ s2_file_2.wav                     
-  └─ my_db_test.transcription   │   └─ s2_file_n.wav                   
+  ├─ my_db_train.transcription  │     ├─ s2_file_1.wav             
+  ├─ my_db_test.fileids          │     ├─ s2_file_2.wav                     
+  └─ my_db_test.transcription   │     └─ s2_file_n.wav                   
                                 └─ spkr_n/           
-                                    ├─ sn_file_1.wav 
-                                    ├─ sn_file_2.wav 
-                                    └─ sn_file_n.wav 
+                                      ├─ sn_file_1.wav 
+                                      ├─ sn_file_2.wav 
+                                      └─ sn_file_n.wav 
 ```
+
+These scripts cover the "[Data Preparation](https://cmusphinx.github.io/wiki/tutorialam/#data-preparation)" 
+section of CMU Sphinx's official AM training tutorial.
 
 * __fb\_00\_create\_envtree.sh__:
 This script creates the directory structure shown above, except the `spkr_X`
@@ -46,15 +45,26 @@ This script specially fulfills the files inside `my_db_dir/etc` dir: .dic,
 .filler, .phone, and .lm. A dependency is our `g2p` software, which must be
 previously downloaded/cloned from https://gitlab.com/fb-nlp/nlp-generator.git.
 
+The next steps will then be (please refer to the section 
+"[Setting up the training scripts](https://cmusphinx.github.io/wiki/tutorialam/#setting-up-the-training-scripts)" 
+for details):     
+- run `sphinxtrain -t my_db_dir setup` inside your project dir
+- edit the recently created `etc/sphinx_train.cfg` file 
+- run `sphinxtrain run` to begin the AM train. 
+
+
 ## Citation
 
-If you use these codes or want to mention the paper referred above, please 
-cite us as one of the following: 
+If you use these codes or want to mention our
+[paper](https://www.isca-speech.org/archive/IberSPEECH_2018/abstracts/IberS18_P1-13_Batista.html), 
+please cite us as one of the following:
 
+Endnote:    
 > Batista, C., Dias, A.L., Sampaio Neto, N. (2018) Baseline Acoustic Models for
 > Brazilian Portuguese Using Kaldi Tools. Proc. IberSPEECH 2018, 77-81, DOI:
 > 10.21437/IberSPEECH.2018-17.
 
+BibTeX:
 ```bibtex
 @inproceedings{Batista2018,
     author    = {Cassio Batista and Ana Larissa Dias and Nelson {Sampaio Neto}},
