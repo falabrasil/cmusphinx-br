@@ -13,6 +13,10 @@
 # Reference:
 # https://cmusphinx.github.io/wiki/tutorialam/
 
+TAG="FB_02"
+
+# NOTE: update this path to point to a LM file in arpa format or either comment
+# it or leave it blank to download our LM from GitLab's remote repo server
 LM_LOCAL_PATH=${HOME}/fb-gitlab/fb-asr/fb-asr-resources/kaldi-resources/lm/lm.arpa
 
 function print_fb_ascii() {
@@ -51,7 +55,7 @@ fi
 # nine
 function create_wordlist() {
     echo -en "\033[1m"
-    echo "creating wordlist (this stage is sequential, so be patient)..."
+    echo "[$TAG] creating wordlist (this stage is sequential, so be patient)..."
     echo -en "\033[0m"
     for txt in $(find ${1}/wav/ -name *.txt) ; do
         for word in $(cat $txt) ; do
@@ -68,7 +72,7 @@ function create_wordlist() {
 function create_dic() {
     dbname=$(basename $2)
     echo -en "\033[1m"
-    echo "creating '${dbname}.dic' file... "
+    echo "[$TAG] creating '${dbname}.dic' file... "
     echo -en "\033[0m"
     java -jar "${1}/fb_nlplib.jar" -i wordlist.tmp -o ${2}/etc/${dbname}.dic -ga
 }
@@ -81,9 +85,8 @@ function create_dic() {
 function create_phone() {
     dbname=$(basename $1)
     echo -en "\033[1m"
-    echo "creating '${dbname}.phone' file... "
+    echo "[$TAG] creating '${dbname}.phone' file... "
     echo -en "\033[0m"
-
     cat ${1}/etc/${dbname}.dic | awk '{$1="" ; print}' > plist.tmp
     echo "SIL" > phonelist.tmp
     for phone in $(cat plist.tmp) ; do
@@ -99,7 +102,7 @@ function create_phone() {
 function create_filler() {
     dbname=$(basename $1)
     echo -en "\033[1m"
-    echo "creating '${dbname}.filler' file... "
+    echo "[$TAG] creating '${dbname}.filler' file... "
     echo -en "\033[0m"
     echo "<s>   SIL"  > ${1}/etc/${dbname}.filler
     echo "</s>  SIL" >> ${1}/etc/${dbname}.filler
@@ -110,11 +113,12 @@ function create_filler() {
 function create_lm() {
     dbname=$(basename $1)
     echo -en "\033[1m"
-    echo "creating '${dbname}.lm' file... "
+    echo "[$TAG] creating '${dbname}.lm' file... "
     echo -en "\033[0m"
-    if [ -f $LM_LOCAL_PATH ] ; then
+    if [ ! -z $LM_LOCAL_PATH ] &&  [ -f $LM_LOCAL_PATH ] ; then
         ln -sfv $LM_LOCAL_PATH ${1}/etc/${dbname}.lm
     else
+        # FIXME does this overwrite a previously created symlink?
         wget -q --show-progress -O ${1}/etc/${dbname}.lm \
             https://gitlab.com/fb-asr/fb-asr-resources/kaldi-resources/raw/master/lm/lm.arpa
     fi
@@ -128,10 +132,10 @@ create_filler   $2
 create_lm       $2
 
 echo -en "\033[1m"
-echo "done!"
+echo "[$TAG] done!"
 echo -en "\033[0m"
 rm *.tmp
 
-notify-send -i $(readlink -f doc/logo_fb_github_footer.png) \
-    "'$0' finished" "check out your CMU Sphinx project dir at '$1'"
-### EOF ###
+(play -q "/usr/share/sounds/freedesktop/stereo/complete.oga")&
+notify-send -i $(readlink -f doc/logo_fb_github_footer.png) -t 8000 \
+    "'$0' finished" "check out your project at '$1'"
