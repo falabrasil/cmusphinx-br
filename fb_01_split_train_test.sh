@@ -12,6 +12,8 @@
 # Reference:
 # https://cmusphinx.github.io/wiki/tutorialam/
 
+TAG="FB_01"
+
 NJ=6
 SPLIT_RANDOM=false
 TEST_DIR="lapsbm16k"
@@ -126,8 +128,8 @@ function create_transcription() {
 
 ### main ###
 if $SPLIT_RANDOM ; then
-    echo -en "\033[1m"
-    echo "shuffling dataset..."
+    echo -en "\033[1m" 
+    echo "[$TAG] shuffling dataset..."
     echo -en "\033[0m"
     find "$1" -name '*.wav' | sed 's/.wav//g' | sort -R > filelist.tmp
     
@@ -139,8 +141,8 @@ if $SPLIT_RANDOM ; then
     tail -n $ntest  filelist.tmp > ${SUBSETS_PREFIX[1]}.list
 else
     echo -en "\033[1m"
-    echo "using only '$TEST_DIR' for test"
-    echo "dir strings to skip: '$SKIP_DIRS'"
+    echo "[$TAG] splitting dataset, but using only '$TEST_DIR' for test"
+    echo "[$TAG] dirs to skip: '$SKIP_DIRS'"
     echo -en "\033[0m"
     find "${1}" -name '*.wav' |\
             grep -vE "${TEST_DIR}|${SKIP_DIRS}" | sed 's/.wav//g' > ${SUBSETS_PREFIX[0]}.list
@@ -152,7 +154,7 @@ fi
 # processing with no bottleneck / queueing
 if [ $STAGE -eq 0 ] ; then
     echo -en "\033[1m"
-    echo "creating >$NJ< temp files for parallel processing jobs..."
+    echo "[$TAG] creating >$NJ< temp files for parallel processing jobs..."
     echo -en "\033[0m"
     split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' ${SUBSETS_PREFIX[0]}.list "${SUBSETS_PREFIX[0]}_"
     split -de -a 3 -n l/${NJ} --additional-suffix '.split.in' ${SUBSETS_PREFIX[1]}.list "${SUBSETS_PREFIX[1]}_"
@@ -166,7 +168,7 @@ if [ $STAGE -eq 1 ] ; then
     rm -rf ${2}/wav
     for prefix in ${SUBSETS_PREFIX[@]} ; do
         echo -en "\033[1m"
-        echo "creating symlinks for $prefix dataset..."
+        echo "[$TAG] creating symlinks for $prefix dataset..."
         echo -en "\033[0m"
         PIDS=()
         echo -n "  pids: "
@@ -187,7 +189,7 @@ fi
 if [ $STAGE -eq 2 ] ; then
     for prefix in ${SUBSETS_PREFIX[@]} ; do
         echo -en "\033[1m"
-        echo "creating .fileids file for $prefix dataset..."
+        echo "[$TAG] creating .fileids file for $prefix dataset..."
         echo -en "\033[0m"
         PIDS=()
         echo -n "  pids: "
@@ -212,7 +214,7 @@ fi
 if [ $STAGE -eq 3 ] ; then
     for prefix in ${SUBSETS_PREFIX[@]} ; do
         echo -en "\033[1m"
-        echo "creating .transcription file for $prefix dataset..."
+        echo "[$TAG] creating .transcription file for $prefix dataset..."
         echo -en "\033[0m"
         PIDS=()
         echo -n "  pids: "
@@ -235,8 +237,9 @@ fi
 rm -f *.list *.tmp *.in *.out
 
 echo -en "\033[1m"
-echo "done!"
+echo "[$TAG] done!"
 echo -en "\033[0m"
 
-notify-send -i $(readlink -f doc/logo_fb_github_footer.png) \
-    "'$0' finished" "it's time to run fb_02. check out your CMU Sphinx project dir at '$1'"
+(play -q "/usr/share/sounds/freedesktop/stereo/complete.oga")&
+notify-send -i $(readlink -f doc/logo_fb_github_footer.png) -t 8000 \
+    "'$0' finished" "time to run <b>fb_02</b>. check out your project at '$1'"
