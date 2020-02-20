@@ -14,10 +14,12 @@
 # https://cmusphinx.github.io/wiki/tutorialam/
 
 TAG="FB_02"
+CROSS_DIC=false
+THREADS=6
 
 # NOTE: update this path to point to a LM file in arpa format or either comment
 # it or leave it blank to download our LM from GitLab's remote repo server
-LM_LOCAL_PATH=${HOME}/fb-gitlab/fb-asr/fb-asr-resources/kaldi-resources/lm/lm.arpa
+LM_LOCAL_PATH=""
 
 function print_fb_ascii() {
     echo -e "\033[94m  ____                         \033[93m _____     _           \033[0m"
@@ -57,12 +59,21 @@ function create_wordlist() {
     echo -en "\033[1m"
     echo "[$TAG] creating wordlist (this stage is sequential, so be patient)..."
     echo -en "\033[0m"
+    sentsep=""
+    if ! $CROSS_DIC ; then
+        sentsep="\n"
+    fi
     for txt in $(find ${1}/wav/ -name *.txt) ; do
         for word in $(cat $txt) ; do
             echo $word >> wlist.tmp
-        done 
+        done
+        echo -ne $sentsep >> wlist.tmp
     done
-    sort wlist.tmp | uniq > wordlist.tmp
+    if ! $CROSS_DIC ; then
+        mv wlist.tmp wordlist.tmp
+    else
+        sort wlist.tmp | uniq > wordlist.tmp
+    fi
 }
 
 # 1) your_db.dic
@@ -74,7 +85,13 @@ function create_dic() {
     echo -en "\033[1m"
     echo "[$TAG] creating '${dbname}.dic' file... "
     echo -en "\033[0m"
-    java -jar "${1}/fb_nlplib.jar" -i wordlist.tmp -o ${2}/etc/${dbname}.dic -ga
+    if ! $CROSS_DIC ; then
+        java -jar "${1}/fb_nlplib.jar" -i wordlist.tmp -o dic.tmp -cCat $THREADS >/dev/null
+        sort dic.tmp | uniq | tr -d '][' > ${2}/etc/${dbname}.dic
+        util/in2cross-trans.py "${2}" "${dbname}"
+    else
+        java -jar "${1}/fb_nlplib.jar" -i wordlist.tmp -o ${2}/etc/${dbname}.dic -gat $THREADS >/dev/null
+    fi
 }
 
 # 2) your_db.phone
